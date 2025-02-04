@@ -1,0 +1,23 @@
+[package]
+name = "redis-loading-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.43.0", features = ["full"] }
+futures = "0.3.31"
+anyhow = "1.0.95"
+redis = { version = "=0.28.1", features = [
+  "connection-manager",
+  "keep-alive",
+  "sentinel",
+  "streams",
+  "tokio-comp",
+  "tokio-rustls-comp",
+  "tls-rustls",
+  "tls-rustls-webpki-roots",
+], optional = true }
+
+[features]
+default = ["redis"]  # redis needed by `nautilus_trader` by default for now
+redis = ["dep:redis"]
