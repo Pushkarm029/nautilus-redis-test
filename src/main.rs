@@ -19,7 +19,10 @@ fn main() {
         let orders_rx = redis.load_orders()?;
 
         println!("currencies count: {}", currencies_rx.recv().unwrap().len());
-        println!("instruments count: {}", instruments_rx.recv().unwrap().len());
+        println!(
+            "instruments count: {}",
+            instruments_rx.recv().unwrap().len()
+        );
         println!("synthetics count: {}", synthetics_rx.recv().unwrap().len());
         println!("accounts count: {}", accounts_rx.recv().unwrap().len());
         println!("orders count: {}", orders_rx.recv().unwrap().len());
@@ -48,7 +51,10 @@ fn main() {
 // 3. current sql type approach
 // 353.774379093s: load_all 5
 
-
 // 3. async with layer by layer impl
 // 134.010523351s: load_all 5
-// 4. complete async impl (not possible because our python binding doesnt support it)
+
+// 4. async with layer by layer impl with parallel value scan
+// 39.899312091s: load_all 5
+
+// 5. complete async impl (not possible because our python binding doesnt support it)
