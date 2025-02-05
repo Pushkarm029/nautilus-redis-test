@@ -12,20 +12,17 @@ fn main() {
     if let Err(e) = runtime.block_on(async {
         let mut redis = RedisCacheDatabase::new().await?;
 
-        let currencies = redis.load_currencies()?;
-        println!("currencies count: {}", currencies.len());
+        let currencies_rx = redis.load_currencies()?;
+        let instruments_rx = redis.load_instruments()?;
+        let synthetics_rx = redis.load_synthetics()?;
+        let accounts_rx = redis.load_accounts()?;
+        let orders_rx = redis.load_orders()?;
 
-        let instruments = redis.load_instruments()?;
-        println!("instruments count: {}", instruments.len());
-
-        let synthetics = redis.load_synthetics()?;
-        println!("synthetics count: {}", synthetics.len());
-
-        let accounts = redis.load_accounts()?;
-        println!("accounts count: {}", accounts.len());
-
-        let orders = redis.load_orders()?;
-        println!("orders count: {}", orders.len());
+        println!("currencies count: {}", currencies_rx.recv().unwrap().len());
+        println!("instruments count: {}", instruments_rx.recv().unwrap().len());
+        println!("synthetics count: {}", synthetics_rx.recv().unwrap().len());
+        println!("accounts count: {}", accounts_rx.recv().unwrap().len());
+        println!("orders count: {}", orders_rx.recv().unwrap().len());
 
         let async_duration = start.elapsed();
         println!("Async approach took: {:?}", async_duration);
@@ -53,4 +50,5 @@ fn main() {
 
 
 // 3. async with layer by layer impl
+// 134.010523351s: load_all 5
 // 4. complete async impl (not possible because our python binding doesnt support it)

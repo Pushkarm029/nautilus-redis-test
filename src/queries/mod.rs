@@ -39,7 +39,7 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
         todo!()
     }
 
-    fn load_currencies(&mut self) -> Result<HashMap<String, String>> {
+    fn load_currencies(&mut self) -> Result<std::sync::mpsc::Receiver<HashMap<String, String>>> {
         let pattern = format!("{CURRENCIES}*");
         let mut conn = self.conn.clone();
 
@@ -64,10 +64,12 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
             }
         });
 
-        Ok(rx.recv().unwrap())
+        Ok(rx)
     }
 
-    fn load_instruments(&mut self) -> anyhow::Result<HashMap<String, String>> {
+    fn load_instruments(
+        &mut self,
+    ) -> anyhow::Result<std::sync::mpsc::Receiver<HashMap<String, String>>> {
         let pattern = format!("{INSTRUMENTS}*");
         let mut conn = self.conn.clone();
 
@@ -91,10 +93,12 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
             }
         });
 
-        Ok(rx.recv().unwrap())
+        Ok(rx)
     }
 
-    fn load_synthetics(&mut self) -> anyhow::Result<HashMap<String, String>> {
+    fn load_synthetics(
+        &mut self,
+    ) -> anyhow::Result<std::sync::mpsc::Receiver<HashMap<String, String>>> {
         let pattern = format!("{SYNTHETICS}*");
         let mut conn = self.conn.clone();
         let (tx, rx) = std::sync::mpsc::channel();
@@ -118,10 +122,12 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
             }
         });
 
-        Ok(rx.recv().unwrap())
+        Ok(rx)
     }
 
-    fn load_accounts(&mut self) -> anyhow::Result<HashMap<String, String>> {
+    fn load_accounts(
+        &mut self,
+    ) -> anyhow::Result<std::sync::mpsc::Receiver<HashMap<String, String>>> {
         let pattern = format!("{ACCOUNTS}*");
         let mut conn = self.conn.clone();
 
@@ -145,10 +151,12 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
             }
         });
 
-        Ok(rx.recv().unwrap())
+        Ok(rx)
     }
 
-    fn load_orders(&mut self) -> anyhow::Result<HashMap<String, String>> {
+    fn load_orders(
+        &mut self,
+    ) -> anyhow::Result<std::sync::mpsc::Receiver<HashMap<String, String>>> {
         let pattern = format!("{ORDERS}*");
         let mut conn = self.conn.clone();
 
@@ -172,7 +180,7 @@ impl CacheDatabaseAdapter for RedisCacheDatabase {
             }
         });
 
-        Ok(rx.recv().unwrap())
+        Ok(rx)
     }
 
     fn load_positions(&mut self) -> anyhow::Result<HashMap<String, String>> {
