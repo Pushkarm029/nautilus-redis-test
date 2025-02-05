@@ -4,7 +4,7 @@
 # Variables
 REDIS_CONTAINER=nautilus-redis-test-redis-1
 # later 1000000
-CURRENCY_COUNT=1000000
+CURRENCY_COUNT=100000
 
 setup:
 	@echo "Setting up Redis and building Rust project..."

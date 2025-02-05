@@ -1,10 +1,16 @@
 // src/main.rs
+// mod queries;
+
 use anyhow::Result;
 use futures::future::join_all;
 use futures::StreamExt;
-use redis::{aio::MultiplexedConnection, AsyncCommands, Client};
+use redis::{
+    aio::{ConnectionManager, ConnectionManagerConfig},
+    AsyncCommands, Client,
+};
 use std::{collections::HashMap, time::Instant};
 use tokio;
+
 // Simulated data structure
 #[derive(Debug, Clone)]
 struct Currency {
@@ -14,14 +20,15 @@ struct Currency {
 }
 
 struct RedisDemo {
-    conn: MultiplexedConnection,
+    manager: ConnectionManager,
 }
 
 impl RedisDemo {
     async fn new() -> Result<Self> {
         let client = Client::open("redis://127.0.0.1/")?;
-        let conn = client.get_multiplexed_tokio_connection().await?;
-        Ok(Self { conn })
+        let config = ConnectionManagerConfig::new().set_number_of_retries(10);
+        let manager = client.get_connection_manager_with_config(config).await?;
+        Ok(Self { manager })
     }
 
     // // Sequential approach
@@ -68,30 +75,15 @@ impl RedisDemo {
         let mut currencies = HashMap::new();
         let pattern = "currency:*".to_string();
 
-        // for key in scan_keys(&mut self.database.con, pattern)? {
-        //     let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        //     let currency_code = Ustr::from(parts.first().unwrap());
-        //     let result = self.load_currency(&currency_code)?;
-        //     match result {
-        //         Some(currency) => {
-        //             currencies.insert(currency_code, currency);
-        //         }
-        //         None => {
-        //             log::error!("Currency not found: {currency_code}");
-        //         }
-        //     }
-        // }
-
-        let iter_keys: Vec<String> = self
-            .conn
+        let keys: Vec<String> = self
+            .manager
             .scan_match::<String, String>(pattern)
-            .await
-            .unwrap()
+            .await?
             .collect()
             .await;
 
-        let futures = iter_keys.iter().map(|key| {
-            let mut conn = self.conn.clone();
+        let futures = keys.iter().map(|key| {
+            let mut conn = self.manager.clone();
             async move {
                 let code = key.split(':').nth(1).unwrap_or_default().to_string();
                 let currency_data = conn.get::<_, String>(key).await?;
@@ -172,3 +164,9 @@ mod tests {
         Ok(())
     }
 }
+
+
+// 1. current
+// Currencies loaded: 100000
+// Async approach took: 4.558472675s
+// Async results count: 100000
