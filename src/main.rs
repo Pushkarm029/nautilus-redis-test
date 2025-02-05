@@ -1,43 +1,39 @@
 // src/main.rs
 mod queries;
 
-use anyhow::Result;
 use queries::models::CacheDatabaseAdapter;
 use queries::RedisCacheDatabase;
 use std::time::Instant;
 use tokio::{self, runtime};
 
-fn main() -> Result<()> {
-    // let runtime = runtime::Runtime::new()?;
+fn main() {
+    let runtime = runtime::Runtime::new().unwrap();
     let start = Instant::now();
-    // let mut redis = match runtime.block_on(async { RedisCacheDatabase::new().await }) {
-    //     Ok(redis) => redis,
-    //     Err(e) => {
-    //         println!("Error creating RedisCacheDatabase: {}", e);
-    //         return Err(e);
-    //     }
-    // };
-    let mut redis = RedisCacheDatabase::new()?;
+    if let Err(e) = runtime.block_on(async {
+        let mut redis = RedisCacheDatabase::new().await?;
 
-    let currencies = redis.load_currencies()?;
-    println!("currencies count: {}", currencies.len());
+        let currencies = redis.load_currencies()?;
+        println!("currencies count: {}", currencies.len());
 
-    let instruments = redis.load_instruments()?;
-    println!("instruments count: {}", instruments.len());
+        let instruments = redis.load_instruments()?;
+        println!("instruments count: {}", instruments.len());
 
-    let synthetics = redis.load_synthetics()?;
-    println!("synthetics count: {}", synthetics.len());
+        let synthetics = redis.load_synthetics()?;
+        println!("synthetics count: {}", synthetics.len());
 
-    let accounts = redis.load_accounts()?;
-    println!("accounts count: {}", accounts.len());
+        let accounts = redis.load_accounts()?;
+        println!("accounts count: {}", accounts.len());
 
-    let orders = redis.load_orders()?;
-    println!("orders count: {}", orders.len());
+        let orders = redis.load_orders()?;
+        println!("orders count: {}", orders.len());
 
-    let async_duration = start.elapsed();
-    println!("Async approach took: {:?}", async_duration);
+        let async_duration = start.elapsed();
+        println!("Async approach took: {:?}", async_duration);
 
-    Ok(())
+        anyhow::Ok(())
+    }) {
+        println!("Error: {}", e);
+    };
 }
 
 // 100000 keys
@@ -51,6 +47,10 @@ fn main() -> Result<()> {
 // 1-4ms: connection impl
 // 55.546447462s: load_currencies
 // 359.081090153s: for all 5
+
+// 3. current sql type approach
+// 353.774379093s: load_all 5
+
 
 // 3. async with layer by layer impl
 // 4. complete async impl (not possible because our python binding doesnt support it)
