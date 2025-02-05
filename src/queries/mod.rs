@@ -1,113 +1,151 @@
+pub mod models;
+
+use std::collections::HashMap;
+
+use anyhow::Result;
+use futures::StreamExt;
+use models::CacheDatabaseAdapter;
+use redis::Commands;
+use redis::{
+    aio::{ConnectionManager, ConnectionManagerConfig},
+    Client, RedisError,
+};
+use redis::{AsyncCommands, Connection};
+
+pub struct RedisCacheDatabase {
+    con: Connection,
+}
+
+impl RedisCacheDatabase {
+    pub fn new() -> anyhow::Result<RedisCacheDatabase> {
+        let client = Client::open("redis://127.0.0.1/")?;
+        // let config = ConnectionManagerConfig::new().set_number_of_retries(10);
+        // let con = client.get_connection_manager_with_config(config).await?;
+        let con = client.get_connection()?;
+        Ok(Self { con })
+    }
+}
+
+const CURRENCIES: &str = "currencies";
+const INSTRUMENTS: &str = "instruments";
+const SYNTHETICS: &str = "synthetics";
+const ACCOUNTS: &str = "accounts";
+const ORDERS: &str = "orders";
+
 // conditions :
 // these all cant be async
 // but we need concurrency
 
-fn load_currencies(&mut self) -> anyhow::Result<HashMap<Ustr, Currency>> {
-    let mut currencies = HashMap::new();
-    let pattern = format!("{CURRENCIES}*");
+impl CacheDatabaseAdapter for RedisCacheDatabase {
+    fn load(&self) -> anyhow::Result<HashMap<String, String>> {
+        todo!()
+    }
 
-    for key in scan_keys(&mut self.database.con, pattern).await? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let currency_code = Ustr::from(parts.first().unwrap());
-        let result = self.load_currency(&currency_code)?;
-        match result {
-            Some(currency) => {
-                currencies.insert(currency_code, currency);
-            }
-            None => {
-                log::error!("Currency not found: {currency_code}");
+    fn load_currencies(&mut self) -> Result<HashMap<String, String>> {
+        let mut currencies = HashMap::new();
+        let pattern = format!("{CURRENCIES}*");
+
+        for key in scan_keys(&mut self.con, pattern)? {
+            let code = key.split(':').nth(1).unwrap_or_default().to_string();
+            let result = self.con.get::<_, String>(key);
+            match result {
+                Ok(currency) => {
+                    currencies.insert(code, currency);
+                }
+                Err(e) => {
+                    log::error!("Currency not found: {code}");
+                    return Err(e.into());
+                }
             }
         }
-    }
-    Ok(currencies)
-}
-
-fn load_instruments(&mut self) -> anyhow::Result<HashMap<InstrumentId, InstrumentAny>> {
-    let mut instruments = HashMap::new();
-    let pattern = format!("{INSTRUMENTS}*");
-
-    for key in scan_keys(&mut self.database.con, pattern)? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let instrument_id = InstrumentId::from_str(parts.first().unwrap())?;
-        let result = self.load_instrument(&instrument_id)?;
-        match result {
-            Some(instrument) => {
-                instruments.insert(instrument_id, instrument);
-            }
-            None => {
-                log::error!("Instrument not found: {instrument_id}");
-            }
-        }
+        Ok(currencies)
     }
 
-    Ok(instruments)
-}
+    fn load_instruments(&mut self) -> anyhow::Result<HashMap<String, String>> {
+        let mut instruments = HashMap::new();
+        let pattern = format!("{INSTRUMENTS}*");
 
-fn load_synthetics(&mut self) -> anyhow::Result<HashMap<InstrumentId, SyntheticInstrument>> {
-    let mut synthetics = HashMap::new();
-    let pattern = format!("{SYNTHETICS}*");
-
-    for key in scan_keys(&mut self.database.con, pattern)? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let instrument_id = InstrumentId::from_str(parts.first().unwrap())?;
-        let synthetic = self.load_synthetic(&instrument_id)?;
-        synthetics.insert(instrument_id, synthetic);
-    }
-
-    Ok(synthetics)
-}
-
-fn load_accounts(&mut self) -> anyhow::Result<HashMap<AccountId, AccountAny>> {
-    let mut accounts = HashMap::new();
-    let pattern = format!("{ACCOUNTS}*");
-
-    for key in scan_keys(&mut self.database.con, pattern)? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let account_id = AccountId::from(*parts.first().unwrap());
-        let result = self.load_account(&account_id)?;
-        match result {
-            Some(account) => {
-                accounts.insert(account_id, account);
-            }
-            None => {
-                log::error!("Account not found: {account_id}");
+        for key in scan_keys(&mut self.con, pattern)? {
+            let instrument_id = key.split(':').nth(1).unwrap_or_default().to_string();
+            let result = self.con.get::<_, String>(key);
+            match result {
+                Ok(instrument) => {
+                    instruments.insert(instrument_id, instrument);
+                }
+                Err(e) => {
+                    log::error!("Instrument not found: {instrument_id}");
+                    return Err(e.into());
+                }
             }
         }
+        Ok(instruments)
     }
 
-    Ok(accounts)
-}
+    fn load_synthetics(&mut self) -> anyhow::Result<HashMap<String, String>> {
+        let mut synthetics = HashMap::new();
+        let pattern = format!("{SYNTHETICS}*");
 
-fn load_orders(&mut self) -> anyhow::Result<HashMap<ClientOrderId, OrderAny>> {
-    let mut orders = HashMap::new();
-    let pattern = format!("{ORDERS}*");
-
-    for key in scan_keys(&mut self.database.con, pattern)? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let client_order_id = ClientOrderId::from(*parts.first().unwrap());
-        let result = self.load_order(&client_order_id)?;
-        match result {
-            Some(order) => {
-                orders.insert(client_order_id, order);
-            }
-            None => {
-                log::error!("Order not found: {client_order_id}");
+        for key in scan_keys(&mut self.con, pattern)? {
+            let instrument_id = key.split(':').nth(1).unwrap_or_default().to_string();
+            let result = self.con.get::<_, String>(key);
+            match result {
+                Ok(synthetic) => {
+                    synthetics.insert(instrument_id, synthetic);
+                }
+                Err(e) => {
+                    log::error!("Synthetic not found: {instrument_id}");
+                    return Err(e.into());
+                }
             }
         }
+        Ok(synthetics)
     }
-    Ok(orders)
+
+    fn load_accounts(&mut self) -> anyhow::Result<HashMap<String, String>> {
+        let mut accounts = HashMap::new();
+        let pattern = format!("{ACCOUNTS}*");
+
+        for key in scan_keys(&mut self.con, pattern)? {
+            let account_id = key.split(':').nth(1).unwrap_or_default().to_string();
+            let result = self.con.get::<_, String>(key);
+            match result {
+                Ok(account) => {
+                    accounts.insert(account_id, account);
+                }
+                Err(e) => {
+                    log::error!("Account not found: {account_id}");
+                    return Err(e.into());
+                }
+            }
+        }
+        Ok(accounts)
+    }
+
+    fn load_orders(&mut self) -> anyhow::Result<HashMap<String, String>> {
+        let mut orders = HashMap::new();
+        let pattern = format!("{ORDERS}*");
+
+        for key in scan_keys(&mut self.con, pattern)? {
+            let order_id = key.split(':').nth(1).unwrap_or_default().to_string();
+            let result = self.con.get::<_, String>(key);
+            match result {
+                Ok(order) => {
+                    orders.insert(order_id, order);
+                }
+                Err(e) => {
+                    log::error!("Order not found: {order_id}");
+                    return Err(e.into());
+                }
+            }
+        }
+        Ok(orders)
+    }
+
+    fn load_positions(&mut self) -> anyhow::Result<HashMap<String, String>> {
+        todo!()
+    }
 }
 
-fn load_positions(&mut self) -> anyhow::Result<HashMap<PositionId, Position>> {
-    let mut positions = HashMap::new();
-    let pattern = format!("{POSITIONS}*");
-
-    for key in scan_keys(&mut self.database.con, pattern)? {
-        let parts: Vec<&str> = key.as_str().rsplitn(2, ':').collect();
-        let position_id = PositionId::from(*parts.first().unwrap());
-        let position = self.load_position(&position_id)?;
-        positions.insert(position_id, position);
-    }
-
-    Ok(positions)
+fn scan_keys(con: &mut Connection, pattern: String) -> Result<Vec<String>, RedisError> {
+    Ok(con.scan_match::<String, String>(pattern)?.collect())
 }

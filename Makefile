@@ -3,8 +3,7 @@
 
 # Variables
 REDIS_CONTAINER=nautilus-redis-test-redis-1
-# later 1000000
-CURRENCY_COUNT=100000
+COUNT=100000
 
 setup:
 	@echo "Setting up Redis and building Rust project..."
@@ -14,13 +13,17 @@ setup:
 	@sleep 2
 
 populate:
-	@echo "Populating Redis with $(CURRENCY_COUNT) currency keys..."
+	@echo "Populating Redis with $(COUNT) currency keys..."
 	docker exec -i $(REDIS_CONTAINER) redis-cli FLUSHALL
-	@for i in $$(seq 1 $(CURRENCY_COUNT)); do \
+	@for i in $$(seq 1 $(COUNT)); do \
 		if [ $$((i % 10000)) -eq 0 ]; then \
 			echo "Populated $$i keys..."; \
 		fi; \
-		echo "SET currency:SYM$$i \"Currency $$i\""; \
+		echo "SET currencies:SYM$$i \"Currency $$i\""; \
+		echo "SET instruments:SYM$$i \"Instrument $$i\""; \
+		echo "SET synthetics:SYM$$i \"Synthetic $$i\""; \
+		echo "SET accounts:SYM$$i \"Account $$i\""; \
+		echo "SET orders:SYM$$i \"Order $$i\""; \
 	done | docker exec -i $(REDIS_CONTAINER) redis-cli --pipe
 
 run: setup populate

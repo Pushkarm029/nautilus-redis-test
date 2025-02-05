@@ -17,7 +17,7 @@ redis = { version = "=0.28.1", features = [
   "tls-rustls",
   "tls-rustls-webpki-roots",
 ], optional = true }
-
+log = "0.4.25"
 [features]
 default = ["redis"]  # redis needed by `nautilus_trader` by default for now
 redis = ["dep:redis"]
